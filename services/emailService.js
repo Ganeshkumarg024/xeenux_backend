@@ -12,8 +12,8 @@ const createTransporter = () => {
     port: 465,
     secure: true,  // Use true for 465, false for other ports
     auth: {
-       user: 'ganeshkumarg024@gmail.com',
-       pass: 'qqsgjcxrwpcxaole'  // Use app-specific password if using Gmail
+       user: '#############@gmail.com',
+       pass: '##############'  // Use app-specific password if using Gmail
   }
   });
 };
