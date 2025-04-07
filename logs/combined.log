@@ -1,0 +1,14 @@
+{"level":"info","message":"Server running on port 3000","service":"xeenux-backend","timestamp":"2025-04-07 17:45:47"}
+{"level":"info","message":"MongoDB Connected: ac-7rkdke3-shard-00-00.iouhyrz.mongodb.net","service":"xeenux-backend","timestamp":"2025-04-07 17:45:48"}
+{"level":"info","message":"Initializing cron jobs...","service":"xeenux-backend","timestamp":"2025-04-07 17:45:48"}
+{"level":"info","message":"Starting scheduler...","service":"xeenux-backend","timestamp":"2025-04-07 17:45:50"}
+{"level":"info","message":"Scheduler started successfully","service":"xeenux-backend","timestamp":"2025-04-07 17:45:50"}
+{"level":"info","message":"Cron jobs initialized successfully","service":"xeenux-backend","timestamp":"2025-04-07 17:45:50"}
+{"level":"info","message":"Application initialized successfully","service":"xeenux-backend","timestamp":"2025-04-07 17:45:50"}
+{"level":"info","message":"Server running on port 3000","service":"xeenux-backend","timestamp":"2025-04-07 17:46:03"}
+{"level":"info","message":"MongoDB Connected: ac-7rkdke3-shard-00-00.iouhyrz.mongodb.net","service":"xeenux-backend","timestamp":"2025-04-07 17:46:04"}
+{"level":"info","message":"Initializing cron jobs...","service":"xeenux-backend","timestamp":"2025-04-07 17:46:04"}
+{"level":"info","message":"Starting scheduler...","service":"xeenux-backend","timestamp":"2025-04-07 17:46:05"}
+{"level":"info","message":"Scheduler started successfully","service":"xeenux-backend","timestamp":"2025-04-07 17:46:05"}
+{"level":"info","message":"Cron jobs initialized successfully","service":"xeenux-backend","timestamp":"2025-04-07 17:46:05"}
+{"level":"info","message":"Application initialized successfully","service":"xeenux-backend","timestamp":"2025-04-07 17:46:05"}
