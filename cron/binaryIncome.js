@@ -9,23 +9,35 @@ async function processBinaryIncome() {
   try {
     logger.info('Starting binary income distribution...');
     
-    // Create mock request and response objects for controller
-    const mockReq = {};
-    const mockRes = {
-      status: () => ({
-        json: () => {}
-      })
-    };
-    const mockNext = (err) => {
-      if (err) logger.error('Error in binary income distribution:', err);
-    };
+    // Get all active users
+    const users = await User.find({ isActive: true });
     
-    // Process binary income
-    await incomeController.processAllBinaryIncome(mockReq, mockRes, mockNext);
+    let processedCount = 0;
+    let incomeDistributed = 0;
     
-    logger.info('Binary income distribution completed');
+    for (const user of users) {
+      try {
+        // Process binary income for this user
+        const binaryController = require('../controllers/binaryController');
+        const result = await binaryController.processBinaryIncomeForUser(user.userId);
+        
+        if (result.status === 'success') {
+          processedCount++;
+          incomeDistributed += result.binaryIncome;
+        }
+      } catch (error) {
+        logger.error(`Error processing binary income for user ${user.userId}: ${error.message}`);
+      }
+    }
+    
+    logger.info(`Binary income distribution completed. Processed ${processedCount} users. Total distributed: ${incomeDistributed} XEE`);
+    return {
+      processed: processedCount,
+      distributed: incomeDistributed
+    };
   } catch (error) {
     logger.error('Failed to process binary income:', error);
+    throw error;
   }
 }
 

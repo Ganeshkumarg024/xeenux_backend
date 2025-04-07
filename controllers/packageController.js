@@ -139,6 +139,7 @@ exports.purchasePackage = catchAsync(async (req, res, next) => {
  * Process level income for a purchase
  * @private
  */
+// Update in controllers/packageController.js - processLevelIncome method
 exports.processLevelIncome = async (user, amount) => {
   // Get level income percentages
   const levelIncomePercentages = await Settings.getValue(
@@ -166,8 +167,10 @@ exports.processLevelIncome = async (user, amount) => {
     referrerPath.push(referrer.userId);
     
     // Check if referrer is eligible for this level income
-    // In the original code, eligibility was based on direct referral count
-    if (referrer.refCount >= level + 1) {
+    // Eligibility is based on having at least (level+1) direct referrals
+    const requiredReferrals = level + 1;
+    
+    if (referrer.refCount >= requiredReferrals) {
       // Calculate income amount
       const incomeAmount = (amount * levelIncomePercentages[level]) / 100;
       
@@ -199,7 +202,9 @@ exports.processLevelIncome = async (user, amount) => {
         meta: {
           sourceUserId: user.userId,
           sourceName: user.name,
-          level: level + 1
+          level: level + 1,
+          refCount: referrer.refCount,
+          requiredReferrals: requiredReferrals
         }
       });
     }

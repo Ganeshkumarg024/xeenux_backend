@@ -3,8 +3,10 @@ const BinaryNetwork = require('../models/BinaryNetwork');
 const UserVolume = require('../models/UserVolume');
 const UserPackage = require('../models/UserPackage');
 const Activity = require('../models/Activity');
+const Income = require('../models/Income');
 const Transaction = require('../models/Transaction');
 const { catchAsync, AppError } = require('../middlewares/errorHandler');
+const Settings = require('../models/Settings')
 
 /**
  * Get binary tree structure for a user
@@ -265,3 +267,172 @@ exports.analyzeBinaryTree = catchAsync(async (req, res, next) => {
     }
   });
 });
+
+
+/**
+ * Process binary income for a user
+ * @param {Number} userId - User ID
+ * @returns {Promise<Object>} - Processing result
+ */
+exports.processBinaryIncomeForUser = async (userId) => {
+  try {
+    // Get user
+    const user = await User.findOne({ userId });
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    // Get binary network data
+    const binaryNetwork = await BinaryNetwork.findOne({ userId });
+    
+    if (!binaryNetwork) {
+      return {
+        status: 'skipped',
+        reason: 'No binary network found'
+      };
+    }
+    
+    // Check if user has both left and right volume
+    if (binaryNetwork.leftVolume === 0 || binaryNetwork.rightVolume === 0) {
+      return {
+        status: 'skipped',
+        reason: 'Insufficient binary volume',
+        leftVolume: binaryNetwork.leftVolume,
+        rightVolume: binaryNetwork.rightVolume
+      };
+    }
+    
+    // Get user's active packages
+    const activePackages = await UserPackage.find({
+      userId: user.userId,
+      isActive: true
+    });
+    
+    if (activePackages.length === 0) {
+      return {
+        status: 'skipped',
+        reason: 'No active packages'
+      };
+    }
+    
+    // Convert user's highest package value to XEE for ceiling limit
+    const tokenService = require('../services/tokenService');
+    
+    // Find highest package in USD
+    const highestPackageUSD = activePackages.reduce((max, pkg) => {
+      return pkg.amountPaid > max ? pkg.amountPaid : max;
+    }, 0);
+    
+    // Get XEE equivalent of highest package
+    const packageValueInXEE = await tokenService.usdToXeenux(highestPackageUSD);
+    
+    // Determine which leg is weaker
+    const isLeftWeaker = binaryNetwork.leftVolume <= binaryNetwork.rightVolume;
+    
+    // Calculate matching volume (always the weaker leg)
+    const matchingVolume = isLeftWeaker ? binaryNetwork.leftVolume : binaryNetwork.rightVolume;
+    
+    // Calculate potential binary income (10% of matching volume)
+    const binaryFee = await Settings.getValue('binary_fee', 10);
+    let calculatedIncome = (matchingVolume * binaryFee) / 100;
+    
+    // Apply daily ceiling limit - must not exceed package value
+    let binaryIncome = calculatedIncome;
+    let ceilingApplied = false;
+    
+    if (calculatedIncome > packageValueInXEE) {
+      binaryIncome = packageValueInXEE;
+      ceilingApplied = true;
+    }
+    
+    // Handle carry forward logic - THIS IS KEY FOR BINARY MATCHING
+    let leftCarryForward = 0;
+    let rightCarryForward = 0;
+    
+    if (isLeftWeaker) {
+      // Left leg is the weaker leg - it gets washed out completely
+      leftCarryForward = 0;
+      // Right leg carries forward the difference (stronger leg - weaker leg)
+      rightCarryForward = binaryNetwork.rightVolume - matchingVolume;
+    } else {
+      // Right leg is the weaker leg - it gets washed out completely
+      rightCarryForward = 0;
+      // Left leg carries forward the difference (stronger leg - weaker leg)
+      leftCarryForward = binaryNetwork.leftVolume - matchingVolume;
+    }
+    
+    // Update binary network with new volumes and carry forwards
+    binaryNetwork.leftVolume = leftCarryForward;
+    binaryNetwork.rightVolume = rightCarryForward;
+    binaryNetwork.leftCarryForward = leftCarryForward;
+    binaryNetwork.rightCarryForward = rightCarryForward;
+    binaryNetwork.lastBinaryProcess = Date.now();
+    await binaryNetwork.save();
+    
+    // Create income record and activity if there's income to distribute
+    if (binaryIncome > 0) {
+      // Create income record
+      await Income.create({
+        userId: user.userId,
+        user: user._id,
+        type: 'binary',
+        amount: binaryIncome,
+        description: `Binary income from pairmatch (${isLeftWeaker ? 'left' : 'right'} leg)`,
+        isDistributed: true,
+        meta: {
+          matchingVolume,
+          leftVolume: binaryNetwork.leftVolume,
+          rightVolume: binaryNetwork.rightVolume,
+          leftCarryForward,
+          rightCarryForward,
+          ceilingApplied,
+          calculatedIncome,
+          packageValue: packageValueInXEE
+        }
+      });
+      
+      // Create activity record
+      await Activity.create({
+        userId: user.userId,
+        user: user._id,
+        amount: binaryIncome,
+        type: 5, // Binary Income
+        description: `Binary income from pairmatch (${isLeftWeaker ? 'left' : 'right'} leg)`,
+        meta: {
+          matchingVolume,
+          weaker: isLeftWeaker ? 'left' : 'right',
+          originalAmount: calculatedIncome,
+          ceilingApplied,
+          packageValueLimit: packageValueInXEE,
+          leftCarryForward,
+          rightCarryForward
+        }
+      });
+      
+      // Update user binary income
+      user.binaryIncome += binaryIncome;
+      user.lastBinaryDistributed = Date.now();
+      await user.save();
+    }
+    
+    return {
+      status: 'success',
+      binaryIncome,
+      matchingVolume,
+      weaker: isLeftWeaker ? 'left' : 'right',
+      washout: isLeftWeaker ? binaryNetwork.leftVolume : binaryNetwork.rightVolume,
+      carryForward: {
+        left: leftCarryForward,
+        right: rightCarryForward
+      },
+      originalAmount: calculatedIncome,
+      ceilingApplied,
+      packageValue: packageValueInXEE,
+      lastDistribution: user.lastBinaryDistributed
+    };
+  } catch (error) {
+    console.error(`Error in processBinaryIncomeForUser: ${error.message}`);
+    throw error;
+  }
+};

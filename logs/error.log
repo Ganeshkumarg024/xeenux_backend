@@ -1,0 +1,25 @@
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 21:36:43"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 21:36:43"}
+{"level":"error","message":"Error processing binary income for user 850837: Settings is not defined","service":"xeenux-backend","timestamp":"2025-04-07 21:54:03"}
+{"level":"error","message":"Error processing binary income for user 850837: Settings is not defined","service":"xeenux-backend","timestamp":"2025-04-07 21:55:03"}
+{"level":"error","message":"Error processing binary income for user 850837: Settings is not defined","service":"xeenux-backend","timestamp":"2025-04-07 21:56:07"}
+{"level":"error","message":"Error processing binary income for user 850837: Settings is not defined","service":"xeenux-backend","timestamp":"2025-04-07 21:57:03"}
+{"level":"error","message":"Error processing binary income for user 850837: Income is not defined","service":"xeenux-backend","timestamp":"2025-04-07 21:58:03"}
+{"level":"error","message":"Error: querySrv ECONNREFUSED _mongodb._tcp.cluster0.iouhyrz.mongodb.net","service":"xeenux-backend","timestamp":"2025-04-07 22:50:59"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:54:01"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:54:01"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:55:00"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:55:00"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:56:00"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:56:01"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:57:00"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:57:01"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:58:01"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:58:01"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:59:00"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 22:59:00"}
+{"level":"error","message":"Error updating rank for user 103115: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 23:00:00"}
+{"level":"error","message":"Error updating rank for user 156591: User volume data not found","service":"xeenux-backend","timestamp":"2025-04-07 23:00:01"}
+{"level":"error","message":"Error processing autopool for user 103115: AutoPool.findOne is not a function","service":"xeenux-backend","timestamp":"2025-04-07 23:16:37"}
+{"level":"error","message":"Error: config is not defined","service":"xeenux-backend","timestamp":"2025-04-07 23:45:08"}
+{"level":"error","message":"Error: config is not defined","service":"xeenux-backend","timestamp":"2025-04-07 23:45:32"}
