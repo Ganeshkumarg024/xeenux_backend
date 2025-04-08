@@ -465,6 +465,7 @@ exports.distributeBinaryIncomeForUser = async (userId) => {
  */
 exports.processWeeklyRewards = catchAsync(async (req, res, next) => {
   // Get weekly reward interval
+  console.log("weekly reward started")
   const weeklyRewardInterval = await Settings.getValue(
     'weekly_reward_interval', 
     config.xeenux.weeklyRewardDistTime

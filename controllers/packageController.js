@@ -46,7 +46,7 @@ exports.getAllPackages = catchAsync(async (req, res, next) => {
 exports.purchasePackage = catchAsync(async (req, res, next) => {
   const { packageIndex, position } = req.body;
   const userId = req.user.userId;
-  
+   console.log("Purchase")
   // Validate package index
   const packageData = await Package.findOne({ packageIndex });
   if (!packageData) {
@@ -139,7 +139,6 @@ exports.purchasePackage = catchAsync(async (req, res, next) => {
  * Process level income for a purchase
  * @private
  */
-// Update in controllers/packageController.js - processLevelIncome method
 exports.processLevelIncome = async (user, amount) => {
   // Get level income percentages
   const levelIncomePercentages = await Settings.getValue(
@@ -167,10 +166,8 @@ exports.processLevelIncome = async (user, amount) => {
     referrerPath.push(referrer.userId);
     
     // Check if referrer is eligible for this level income
-    // Eligibility is based on having at least (level+1) direct referrals
-    const requiredReferrals = level + 1;
-    
-    if (referrer.refCount >= requiredReferrals) {
+    // In the original code, eligibility was based on direct referral count
+    if (referrer.refCount >= level + 1) {
       // Calculate income amount
       const incomeAmount = (amount * levelIncomePercentages[level]) / 100;
       
@@ -202,9 +199,7 @@ exports.processLevelIncome = async (user, amount) => {
         meta: {
           sourceUserId: user.userId,
           sourceName: user.name,
-          level: level + 1,
-          refCount: referrer.refCount,
-          requiredReferrals: requiredReferrals
+          level: level + 1
         }
       });
     }
@@ -317,35 +312,31 @@ exports.updatePackage = catchAsync(async (req, res, next) => {
  * Delete a package (admin only)
  */
 exports.deletePackage = catchAsync(async (req, res, next) => {
-    const packageIndex = parseInt(req.params.packageIndex);
-    
-    // Find package
-    const packageData = await Package.findOne({ packageIndex });
-    
-    if (!packageData) {
-      return next(new AppError('Package not found', 404));
-    }
-    
-    // Check if there are active users with this package
-    const activePackageUsers = await UserPackage.countDocuments({
-      packageIndex,
-      isActive: true
-    });
-    
-    if (activePackageUsers > 0) {
-      return next(new AppError('Cannot delete package with active users', 400));
-    }
-    
-    // Deactivate package instead of deleting
-    packageData.isActive = false;
-    await packageData.save();
-    
-    res.status(204).json({
-      status: 'success',
-      data: null
-    });
+  const packageIndex = parseInt(req.params.packageIndex);
+  
+  // Find package
+  const packageData = await Package.findOne({ packageIndex });
+  
+  if (!packageData) {
+    return next(new AppError('Package not found', 404));
+  }
+  
+  // Check if there are active users with this package
+  const activePackageUsers = await UserPackage.countDocuments({
+    packageIndex,
+    isActive: true
   });
   
+  if (activePackageUsers > 0) {
+    return next(new AppError('Cannot delete package with active users', 400));
+  }
   
+  // Deactivate package instead of deleting
+  packageData.isActive = false;
+  await packageData.save();
   
-  
+  res.status(204).json({
+    status: 'success',
+    data: null
+  });
+});

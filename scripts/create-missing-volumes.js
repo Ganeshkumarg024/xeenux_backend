@@ -1,125 +1,93 @@
-// Create a new file: scripts/create-missing-volumes.js
+/**
+ * Script to manually update a user's metrics to qualify for a rank
+ * and then test the rank calculation
+ */
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const UserVolume = require('../models/UserVolume');
-const BinaryNetwork = require('../models/BinaryNetwork');
 const TeamStructure = require('../models/TeamStructure');
+const rankService = require('../services/rankService');
 const logger = require('../utils/logger');
 require('dotenv').config();
 
 /**
- * Create missing user-related records
+ * Update user eligibility for rank testing
  */
-async function createMissingRecords() {
+async function updateUserForRankTest() {
   try {
-    // Connect to MongoDB
+    // Connect to database
     await mongoose.connect(process.env.MONGO_URI);
     logger.info('MongoDB Connected');
     
-    // Get all users
-    const users = await User.find();
-    logger.info(`Found ${users.length} users total`);
+    // Choose a user to update (e.g., the one with high selfVolume)
+    const userId = 243744; // Replace with the user ID you want to test
     
-    let volumeCreated = 0;
-    let binaryCreated = 0;
-    let teamCreated = 0;
+    // Get user
+    const user = await User.findOne({ userId });
+    if (!user) {
+      logger.error(`User ${userId} not found`);
+      process.exit(1);
+    }
     
-    for (const user of users) {
-      try {
-        // Check for UserVolume
-        const existingVolume = await UserVolume.findOne({ userId: user.userId });
-        if (!existingVolume) {
-          await UserVolume.create({
-            userId: user.userId,
-            user: user._id,
-            selfVolume: 0,
-            directVolume: 0,
-            leftVolume: 0,
-            rightVolume: 0,
-            totalVolume: 0,
-            lastUpdated: Date.now()
-          });
-          volumeCreated++;
+    logger.info(`Updating user ${userId} (${user.name}) for rank test...`);
+    
+    // Step 1: Update refCount to qualify for Silver rank
+    user.refCount = 5; // Minimum for Silver rank
+    await user.save();
+    logger.info(`Updated refCount to ${user.refCount}`);
+    
+    // Step 2: Update UserVolume for directVolume
+    const userVolume = await UserVolume.findOne({ userId });
+    if (!userVolume) {
+      logger.error(`Volume data for user ${userId} not found`);
+      process.exit(1);
+    }
+    
+    // Set directVolume to qualify for Silver rank
+    // If xeenuxPrice is 0.00011, then 300/0.00011 = 2,727,272.73
+    userVolume.directVolume = 2800000; // Slightly more than required
+    await userVolume.save();
+    logger.info(`Updated directVolume to ${userVolume.directVolume}`);
+    
+    // Step 3: Update TeamStructure for this user's referrer
+    if (user.referrerId) {
+      const referrerTeamStructure = await TeamStructure.findOne({ userId: user.referrerId });
+      if (referrerTeamStructure) {
+        // Make sure the teamRanks map exists
+        if (!referrerTeamStructure.teamRanks) {
+          referrerTeamStructure.teamRanks = {
+            rank0: 0,
+            rank1: 0,
+            rank2: 0,
+            rank3: 0,
+            rank4: 0
+          };
         }
         
-        // Check for BinaryNetwork
-        const existingBinary = await BinaryNetwork.findOne({ userId: user.userId });
-        if (!existingBinary) {
-          await BinaryNetwork.create({
-            userId: user.userId,
-            user: user._id,
-            position: user.position,
-            parentId: user.referrerId,
-            leftChildId: 0,
-            rightChildId: 0,
-            leftVolume: 0,
-            rightVolume: 0,
-            leftCarryForward: 0,
-            rightCarryForward: 0,
-            totalLeftVolume: 0,
-            totalRightVolume: 0,
-            leftCount: 0,
-            rightCount: 0,
-            lastBinaryProcess: Date.now()
-          });
-          binaryCreated++;
-        }
-        
-        // Check for TeamStructure
-        const existingTeam = await TeamStructure.findOne({ userId: user.userId });
-        if (!existingTeam) {
-          await TeamStructure.create({
-            userId: user.userId,
-            user: user._id,
-            directTeam: 0,
-            totalTeam: 0,
-            directBusiness: 0,
-            totalBusiness: 0,
-            team: {
-              level1: [],
-              level2: [],
-              level3: [],
-              level4: [],
-              level5: [],
-              level6: [],
-              level7: []
-            },
-            volume: {
-              level1: 0,
-              level2: 0,
-              level3: 0,
-              level4: 0,
-              level5: 0,
-              level6: 0,
-              level7: 0
-            },
-            teamRanks: {
-              rank0: 0,
-              rank1: 0,
-              rank2: 0,
-              rank3: 0,
-              rank4: 0
-            },
-            lastUpdated: Date.now()
-          });
-          teamCreated++;
-        }
-      } catch (error) {
-        logger.error(`Error processing user ${user.userId}: ${error.message}`);
+        // Update to have 2 Silver ranked users (for Gold rank qualification)
+        referrerTeamStructure.teamRanks.rank1 = 2;
+        referrerTeamStructure.markModified('teamRanks');
+        await referrerTeamStructure.save();
+        logger.info(`Updated referrer's team rank counts`);
       }
     }
     
-    logger.info(`Data integrity check completed.`);
-    logger.info(`Created ${volumeCreated} missing user volume records.`);
-    logger.info(`Created ${binaryCreated} missing binary network records.`);
-    logger.info(`Created ${teamCreated} missing team structure records.`);
+    // Step 4: Run rank calculation for this user
+    logger.info(`Running rank calculation for user ${userId}...`);
+    const result = await rankService.updateUserRank(userId);
+    
+    logger.info(`Rank calculation result:`, result);
+    
+    // Log the final state
+    const updatedUser = await User.findOne({ userId });
+    logger.info(`Final user state: Rank = ${updatedUser.rank}`);
     
     process.exit(0);
   } catch (error) {
-    logger.error(`Error: ${error.message}`);
+    logger.error('Error in rank test script:', error);
     process.exit(1);
   }
 }
 
 // Run the script
-createMissingRecords();
+updateUserForRankTest();

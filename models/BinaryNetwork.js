@@ -199,37 +199,75 @@ binaryNetworkSchema.statics.getPathFromReferrer = async function(referrerId, pla
 
 // Static method to update volumes in the binary network
 binaryNetworkSchema.statics.updateVolumes = async function(userId, amount) {
-  // Get the user's node
-  const userNode = await this.findOne({ userId });
+  console.log(`Updating binary volumes for userId: ${userId} with amount: ${amount}`);
   
-  if (!userNode) {
-    throw new Error('User not found in binary network');
-  }
-  
-  // Start with the parent of the user
-  let currentId = userNode.parentId;
-  let position = userNode.position;
-  
-  // Update volumes up the tree
-  while (currentId !== 0) {
-    const parentNode = await this.findOne({ userId: currentId });
+  try {
+    // Get the user's node
+    const userNode = await this.findOne({ userId });
     
-    if (!parentNode) break;
-    
-    // Update the volume based on position
-    if (position === 0) {
-      parentNode.leftVolume += amount;
-      parentNode.totalLeftVolume += amount;
-    } else {
-      parentNode.rightVolume += amount;
-      parentNode.totalRightVolume += amount;
+    if (!userNode) {
+      console.error(`User ${userId} not found in binary network`);
+      throw new Error(`User ${userId} not found in binary network`);
     }
     
-    await parentNode.save();
+    console.log(`Found user node with parentId: ${userNode.parentId}, position: ${userNode.position}`);
     
-    // Move up to the next parent
-    position = parentNode.position;
-    currentId = parentNode.parentId;
+    // Start with the parent of the user
+    let currentId = userNode.parentId;
+    let position = userNode.position;
+    
+    // To prevent infinite loops, keep track of processed nodes
+    const processedNodes = new Set();
+    
+    // Update volumes up the tree
+    while (currentId !== 0) {
+      console.log(`Processing parent: ${currentId}`);
+      
+      // Check if we've already processed this node (to prevent infinite loops)
+      if (processedNodes.has(currentId)) {
+        console.error(`Detected cycle in binary tree at node ${currentId}. Breaking loop.`);
+        break;
+      }
+      
+      // Add this node to processed set
+      processedNodes.add(currentId);
+      
+      const parentNode = await this.findOne({ userId: currentId });
+      
+      if (!parentNode) {
+        console.error(`Parent node ${currentId} not found`);
+        break;
+      }
+      
+      // Update the volume based on position
+      if (position === 0) {
+        parentNode.leftVolume += amount;
+        parentNode.totalLeftVolume += amount;
+        console.log(`Updated left volume for ${currentId} to ${parentNode.leftVolume}`);
+      } else {
+        parentNode.rightVolume += amount;
+        parentNode.totalRightVolume += amount;
+        console.log(`Updated right volume for ${currentId} to ${parentNode.rightVolume}`);
+      }
+      
+      await parentNode.save();
+      
+      // Break the loop if the parent points to itself
+      if (parentNode.parentId === currentId) {
+        console.error(`Node ${currentId} has itself as parent. Breaking loop.`);
+        break;
+      }
+      
+      // Move up to the next parent
+      position = parentNode.position;
+      currentId = parentNode.parentId;
+    }
+    
+    console.log('Binary volume update completed successfully');
+    return true;
+  } catch (error) {
+    console.error('Error updating binary volumes:', error);
+    throw error;
   }
 };
 

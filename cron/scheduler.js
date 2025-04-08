@@ -7,6 +7,8 @@ const weeklyRewards = require('./weeklyRewards');
 const updateRanks = require('./updateRanks');
 const Settings = require('../models/Settings');
 const config = require('../config/config');
+const rankCalculation = require("./rankCalculator");
+
 
 /**
  * Initialize cron jobs
@@ -18,8 +20,8 @@ exports.initScheduler = async () => {
     // Get scheduler settings
     const roiInterval = await Settings.getValue('roi_interval', '0 0 * * *'); // Daily at midnight
     const binaryInterval = await Settings.getValue('binary_interval', '* * * * *'); // Daily at noon
-    const weeklyInterval = await Settings.getValue('weekly_interval', '0 0 * * 0'); // Weekly on Sunday
-    const rankUpdateInterval = await Settings.getValue('rank_update_interval', '* * * * *'); // Daily at 1 AM
+    const weeklyInterval = await Settings.getValue('weekly_interval', '* * * * *'); // Weekly on Sunday
+    const rankUpdateInterval = await Settings.getValue('rank_update_interval', '0 1 * * *'); // Daily at 1 AM
     
     // Schedule daily ROI distribution
     cron.schedule(roiInterval, async () => {
@@ -70,4 +72,16 @@ exports.initScheduler = async () => {
   } catch (error) {
     logger.error('Error initializing scheduler:', error);
   }
+
+
+  cron.schedule('* * * * *', async () => { // Run once a day at midnight
+    logger.info('Running scheduled rank calculation');
+    logger.info('Running scheduled rank calculation');
+      try {
+        await rankCalculation.processRankCalculation();
+        logger.info('Rank calculation completed');
+      } catch (error) {
+        logger.error('Error processing rank calculation:', error);
+      }
+  });
 };
