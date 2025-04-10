@@ -99,3 +99,23 @@ autoPoolSchema.statics.findLevel = function(position) {
   
   return level;
 };
+
+// Static method to get level start position
+autoPoolSchema.statics.getLevelStartPosition = function(level) {
+  if (level <= 0) return 1; // Level 0 starts at position 1
+  
+  let startPosition = 1;
+  for (let i = 0; i < level; i++) {
+    startPosition += Math.pow(4, i);
+  }
+  
+  return startPosition;
+};
+
+// Add any other static methods you need
+
+// Create the model from the schema
+const AutoPool = mongoose.model('AutoPool', autoPoolSchema);
+
+// Export the model
+module.exports = AutoPool;

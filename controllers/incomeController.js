@@ -102,144 +102,168 @@ exports.processAllROI = catchAsync(async (req, res, next) => {
  * Distribute ROI for a specific user
  * @private
  */
+// Update in controllers/incomeController.js - distributeROIForUser method
 exports.distributeROIForUser = async (userId) => {
-  // Get user
-  const user = await User.findOne({ userId });
-  
-  if (!user) {
-    throw new Error('User not found');
-  }
-  
-  // Check if user is eligible for ROI distribution
-  const maxROITime = await Settings.getValue('max_roi_days', config.xeenux.maxRoiDays) * 24 * 60 * 60 * 1000;
-  
-  if ((user.lastROIDistributed - user.registeredAt) >= maxROITime) {
-    return {
-      status: 'skipped',
-      reason: 'Maximum ROI period reached'
-    };
-  }
-  
-  // Get income distribution interval
-  const allIncomeDistTime = await Settings.getValue('income_distribution_interval', config.xeenux.allIncomeDistTime);
-  
-  // Check if distribution time has elapsed
-  if ((user.lastROIDistributed.getTime() + allIncomeDistTime) > Date.now()) {
-    return {
-      status: 'skipped',
-      reason: 'Distribution interval not elapsed',
-      nextDistribution: new Date(user.lastROIDistributed.getTime() + allIncomeDistTime)
-    };
-  }
-  
-  // Get active packages
-  const activePackages = await UserPackage.find({
-    userId: user.userId,
-    isActive: true
-  });
-  
-  if (activePackages.length === 0) {
-    return {
-      status: 'skipped',
-      reason: 'No active packages'
-    };
-  }
-  
-  // Calculate active volume (sum of all active packages)
-  const activeVolume = activePackages.reduce((sum, pkg) => sum + pkg.xeenuxAmount, 0);
-  
-  // Get daily ROI rate
-  const dailyROIRate = await Settings.getValue('daily_roi_rate', config.xeenux.dailyRoiRate);
-  
-  // Calculate ROI
-  const roiAmount = (dailyROIRate * activeVolume) / 1000; // 0.5% = 5/1000
-  
-  if (roiAmount <= 0) {
-    return {
-      status: 'skipped',
-      reason: 'ROI amount is zero'
-    };
-  }
-  
-  // Distribute ROI to packages
-  let remainingROI = roiAmount;
-  const updatedPackages = [];
-  
-  for (const pkg of activePackages) {
-    // Calculate available capacity in this package
-    const packageCap = pkg.ceilingLimit - pkg.earned;
+  try {
+    // Get user
+    const user = await User.findOne({ userId });
     
-    if (packageCap <= 0) {
-      // Package reached ceiling, deactivate it
-      pkg.isActive = false;
-      await pkg.save();
-      continue;
+    if (!user) {
+      throw new Error('User not found');
     }
     
-    if (remainingROI <= packageCap) {
-      // This package can handle all remaining ROI
-      pkg.earned += remainingROI;
+    // Check if user is eligible for ROI distribution
+    const maxROITime = await Settings.getValue('max_roi_days', config.xeenux.maxRoiDays) * 24 * 60 * 60 * 1000;
+    
+    // Check if maximum ROI period reached
+    const roiElapsedTime = Date.now() - user.registeredAt.getTime();
+    if (roiElapsedTime >= maxROITime) {
+      return {
+        status: 'skipped',
+        reason: 'Maximum ROI period reached',
+        elapsedDays: Math.floor(roiElapsedTime / (24 * 60 * 60 * 1000)),
+        maxDays: config.xeenux.maxRoiDays
+      };
+    }
+    
+    // Get income distribution interval
+    const allIncomeDistTime = await Settings.getValue('income_distribution_interval', config.xeenux.allIncomeDistTime);
+    
+    // Check if distribution time has elapsed since last distribution
+    const timeSinceLastROI = Date.now() - user.lastROIDistributed.getTime();
+    if (timeSinceLastROI < allIncomeDistTime) {
+      return {
+        status: 'skipped',
+        reason: 'Distribution interval not elapsed',
+        nextDistribution: new Date(user.lastROIDistributed.getTime() + allIncomeDistTime),
+        timeRemaining: allIncomeDistTime - timeSinceLastROI
+      };
+    }
+    
+    // Get active packages
+    const activePackages = await UserPackage.find({
+      userId: user.userId,
+      isActive: true
+    });
+    
+    if (activePackages.length === 0) {
+      return {
+        status: 'skipped',
+        reason: 'No active packages'
+      };
+    }
+    
+    // Calculate active volume (sum of all active packages)
+    const activeVolume = activePackages.reduce((sum, pkg) => sum + pkg.xeenuxAmount, 0);
+    
+    // Get daily ROI rate (0.5% = 5/1000)
+    const dailyROIRate = await Settings.getValue('daily_roi_rate', config.xeenux.dailyRoiRate);
+    
+    // Calculate ROI
+    const roiAmount = (dailyROIRate * activeVolume) / 1000;
+    
+    if (roiAmount <= 0) {
+      return {
+        status: 'skipped',
+        reason: 'ROI amount is zero',
+        activeVolume,
+        dailyROIRate
+      };
+    }
+    
+    // Distribute ROI to packages starting with the oldest
+    let remainingROI = roiAmount;
+    const updatedPackages = [];
+    
+    const sortedPackages = [...activePackages].sort((a, b) => 
+      new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime()
+    );
+    
+    for (const pkg of sortedPackages) {
+      // Calculate available capacity in this package
+      const packageCap = pkg.ceilingLimit - pkg.earned;
       
-      if (pkg.earned >= pkg.ceilingLimit) {
+      if (packageCap <= 0) {
+        // Package reached ceiling, deactivate it
         pkg.isActive = false;
         pkg.completedDate = Date.now();
+        await pkg.save();
+        continue;
       }
       
-      await pkg.save();
-      updatedPackages.push(pkg);
-      remainingROI = 0;
-      break;
-    } else {
-      // Fill this package completely and continue to next
-      pkg.earned = pkg.ceilingLimit;
-      pkg.isActive = false;
-      pkg.completedDate = Date.now();
-      
-      await pkg.save();
-      updatedPackages.push(pkg);
-      
-      remainingROI -= packageCap;
+      if (remainingROI <= packageCap) {
+        // This package can handle all remaining ROI
+        pkg.earned += remainingROI;
+        
+        if (pkg.earned >= pkg.ceilingLimit) {
+          pkg.isActive = false;
+          pkg.completedDate = Date.now();
+        }
+        
+        await pkg.save();
+        updatedPackages.push(pkg);
+        remainingROI = 0;
+        break;
+      } else {
+        // Fill this package completely and continue to next
+        pkg.earned = pkg.ceilingLimit;
+        pkg.isActive = false;
+        pkg.completedDate = Date.now();
+        
+        await pkg.save();
+        updatedPackages.push(pkg);
+        
+        remainingROI -= packageCap;
+      }
     }
-  }
-  
-  const earnedAmount = roiAmount - remainingROI;
-  
-  if (earnedAmount > 0) {
-    // Create income record
-    await Income.create({
-      userId: user.userId,
-      user: user._id,
-      type: 'roi',
-      amount: earnedAmount,
-      description: 'Daily ROI income',
-      isDistributed: true
-    });
     
-    // Create activity record
-    await Activity.create({
-      userId: user.userId,
-      user: user._id,
-      amount: earnedAmount,
-      type: 2, // ROI
-      description: 'Daily ROI income'
-    });
+    const earnedAmount = roiAmount - remainingROI;
     
-    // Update user ROI income
-    user.roiIncome += earnedAmount;
+    if (earnedAmount > 0) {
+      // Create income record
+      await Income.create({
+        userId: user.userId,
+        user: user._id,
+        type: 'roi',
+        amount: earnedAmount,
+        description: 'Daily ROI income',
+        isDistributed: true
+      });
+      
+      // Create activity record
+      await Activity.create({
+        userId: user.userId,
+        user: user._id,
+        amount: earnedAmount,
+        type: 2, // ROI
+        description: 'Daily ROI income',
+        meta: {
+          totalCalculated: roiAmount,
+          activeVolume,
+          roiRate: dailyROIRate
+        }
+      });
+      
+      // Update user ROI income
+      user.roiIncome += earnedAmount;
+    }
+    
+    // Update last ROI distribution time
+    user.lastROIDistributed = Date.now();
+    await user.save();
+    
+    return {
+      status: 'success',
+      roiAmount: earnedAmount,
+      totalROI: roiAmount,
+      remainingROI,
+      updatedPackages: updatedPackages.length,
+      lastDistribution: user.lastROIDistributed
+    };
+  } catch (error) {
+    console.error(`Error in distributeROIForUser: ${error.message}`);
+    throw error;
   }
-  
-  // Update last ROI distribution time
-  user.lastROIDistributed = Date.now();
-  await user.save();
-  
-  return {
-    status: 'success',
-    roiAmount: earnedAmount,
-    totalROI: roiAmount,
-    remainingROI,
-    updatedPackages: updatedPackages.length,
-    lastDistribution: user.lastROIDistributed
-  };
 };
 
 /**
@@ -293,107 +317,147 @@ exports.processAllBinaryIncome = catchAsync(async (req, res, next) => {
  * Distribute binary income for a specific user
  * @private
  */
+// Update in controllers/incomeController.js - distributeBinaryIncomeForUser method
 exports.distributeBinaryIncomeForUser = async (userId) => {
-  // Get user
-  const user = await User.findOne({ userId });
-  
-  if (!user) {
-    throw new Error('User not found');
-  }
-  
-  // Get binary network data
-  const binaryNetwork = await BinaryNetwork.findOne({ userId });
-  
-  if (!binaryNetwork) {
-    return {
-      status: 'skipped',
-      reason: 'No binary network found'
-    };
-  }
-  
-  // Check if user has both left and right volume
-  if (binaryNetwork.leftVolume === 0 || binaryNetwork.rightVolume === this) {
-    return {
-      status: 'skipped',
-      reason: 'Insufficient binary volume',
-      leftVolume: binaryNetwork.leftVolume,
-      rightVolume: binaryNetwork.rightVolume
-    };
-  }
-  
-  // Get income distribution interval
-  const allIncomeDistTime = await Settings.getValue('income_distribution_interval', config.xeenux.allIncomeDistTime);
-  
-  // Check if distribution time has elapsed
-  if ((user.lastBinaryDistributed.getTime() + allIncomeDistTime) > Date.now()) {
-    return {
-      status: 'skipped',
-      reason: 'Distribution interval not elapsed',
-      nextDistribution: new Date(user.lastBinaryDistributed.getTime() + allIncomeDistTime)
-    };
-  }
-  
-  // Get active packages for ceiling limit
-  const activePackages = await UserPackage.find({
-    userId: user.userId,
-    isActive: true
-  });
-  
-  if (activePackages.length === 0) {
-    return {
-      status: 'skipped',
-      reason: 'No active packages'
-    };
-  }
-  
-  // Calculate binary income
-  const result = await BinaryNetwork.calculateBinaryIncome(userId, activePackages);
-  
-  if (result.binaryIncome <= 0) {
-    return {
-      status: 'skipped',
-      reason: 'Binary income is zero',
-      matchingVolume: result.matchingVolume,
-      carryForward: result.carryForward
-    };
-  }
-  
-  // Create income record
-  await Income.create({
-    userId: user.userId,
-    user: user._id,
-    type: 'binary',
-    amount: result.binaryIncome,
-    description: 'Binary income',
-    isDistributed: true
-  });
-  
-  // Create activity record
-  await Activity.create({
-    userId: user.userId,
-    user: user._id,
-    amount: result.binaryIncome,
-    type: 5, // Binary Income
-    description: 'Binary income',
-    meta: {
-      matchingVolume: result.matchingVolume,
-      leftCarryForward: result.carryForward.left,
-      rightCarryForward: result.carryForward.right
+  try {
+    // Get user
+    const user = await User.findOne({ userId });
+    
+    if (!user) {
+      throw new Error('User not found');
     }
-  });
-  
-  // Update user binary income
-  user.binaryIncome += result.binaryIncome;
-  user.lastBinaryDistributed = Date.now();
-  await user.save();
-  
-  return {
-    status: 'success',
-    binaryIncome: result.binaryIncome,
-    matchingVolume: result.matchingVolume,
-    carryForward: result.carryForward,
-    lastDistribution: user.lastBinaryDistributed
-  };
+    
+    // Get binary network data
+    const binaryNetwork = await BinaryNetwork.findOne({ userId });
+    
+    if (!binaryNetwork) {
+      return {
+        status: 'skipped',
+        reason: 'No binary network found'
+      };
+    }
+    
+    // Check if user has both left and right volume
+    if (binaryNetwork.leftVolume === 0 || binaryNetwork.rightVolume === 0) {
+      return {
+        status: 'skipped',
+        reason: 'Insufficient binary volume',
+        leftVolume: binaryNetwork.leftVolume,
+        rightVolume: binaryNetwork.rightVolume
+      };
+    }
+    
+    // Get active packages for ceiling limit - get highest active package value
+    const activePackages = await UserPackage.find({
+      userId: user.userId,
+      isActive: true
+    });
+    
+    if (activePackages.length === 0) {
+      return {
+        status: 'skipped',
+        reason: 'No active packages'
+      };
+    }
+    
+    // Get user's active package in USD value
+    const highestPackage = activePackages.reduce((max, pkg) => {
+      return pkg.amountPaid > max ? pkg.amountPaid : max;
+    }, 0);
+    
+    // Convert package value to XEE tokens for ceiling comparison
+    const tokenService = require('../services/tokenService');
+    const packageValueInXEE = await tokenService.usdToXeenux(highestPackage);
+    
+    // Calculate matching volume (weaker leg)
+    const matchingVolume = Math.min(binaryNetwork.leftVolume, binaryNetwork.rightVolume);
+    
+    // Calculate binary income (10% of matching volume)
+    const binaryFee = await Settings.getValue('binary_fee', 10);
+    let binaryIncome = (matchingVolume * binaryFee) / 100;
+    
+    // Apply daily ceiling limit - should be package value
+    if (binaryIncome > packageValueInXEE) {
+      binaryIncome = packageValueInXEE;
+    }
+    
+    // Determine which leg is weaker for carry forward calculation
+    const isLeftWeaker = binaryNetwork.leftVolume <= binaryNetwork.rightVolume;
+    
+    // Update carry forward values and reset volumes
+    let leftCarryForward = 0;
+    let rightCarryForward = 0;
+    
+    if (isLeftWeaker) {
+      // Left leg is matched completely (weaker)
+      leftCarryForward = 0;
+      // Right leg carries forward the difference
+      rightCarryForward = binaryNetwork.rightVolume - matchingVolume;
+    } else {
+      // Right leg is matched completely (weaker)
+      rightCarryForward = 0;
+      // Left leg carries forward the difference
+      leftCarryForward = binaryNetwork.leftVolume - matchingVolume;
+    }
+    
+    // Update binary network
+    binaryNetwork.leftVolume = leftCarryForward;
+    binaryNetwork.rightVolume = rightCarryForward;
+    binaryNetwork.leftCarryForward = leftCarryForward;
+    binaryNetwork.rightCarryForward = rightCarryForward;
+    binaryNetwork.lastBinaryProcess = Date.now();
+    await binaryNetwork.save();
+    
+    // Create income record
+    if (binaryIncome > 0) {
+      await Income.create({
+        userId: user.userId,
+        user: user._id,
+        type: 'binary',
+        amount: binaryIncome,
+        description: 'Binary income',
+        isDistributed: true
+      });
+      
+      // Create activity record
+      await Activity.create({
+        userId: user.userId,
+        user: user._id,
+        amount: binaryIncome,
+        type: 5, // Binary Income
+        description: 'Binary income',
+        meta: {
+          matchingVolume: matchingVolume,
+          leftCarryForward: leftCarryForward,
+          rightCarryForward: rightCarryForward,
+          packageValue: packageValueInXEE,
+          originalCalculation: (matchingVolume * binaryFee) / 100
+        }
+      });
+      
+      // Update user binary income
+      user.binaryIncome += binaryIncome;
+      user.lastBinaryDistributed = Date.now();
+      await user.save();
+    }
+    
+    return {
+      status: 'success',
+      binaryIncome: binaryIncome,
+      matchingVolume: matchingVolume,
+      carryForward: {
+        left: leftCarryForward,
+        right: rightCarryForward
+      },
+      packageValue: packageValueInXEE,
+      leftVolume: binaryNetwork.leftVolume,
+      rightVolume: binaryNetwork.rightVolume,
+      lastDistribution: user.lastBinaryDistributed
+    };
+  } catch (error) {
+    console.error(`Error in distributeBinaryIncomeForUser: ${error.message}`);
+    throw error;
+  }
 };
 
 /**
@@ -401,6 +465,7 @@ exports.distributeBinaryIncomeForUser = async (userId) => {
  */
 exports.processWeeklyRewards = catchAsync(async (req, res, next) => {
   // Get weekly reward interval
+  console.log("weekly reward started")
   const weeklyRewardInterval = await Settings.getValue(
     'weekly_reward_interval', 
     config.xeenux.weeklyRewardDistTime

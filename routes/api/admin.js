@@ -34,4 +34,9 @@ router.get('/logs', adminController.getSystemLogs);
 // Generate reports
 router.post('/reports', adminController.generateReport);
 
+// In routes/api/admin.js
+
+// Rank management
+router.post('/ranks/calculate', adminController.recalculateUserRanks);
+
 module.exports = router;

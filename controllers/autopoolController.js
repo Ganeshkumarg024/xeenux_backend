@@ -308,3 +308,148 @@ exports.getAutopoolTeam = catchAsync(async (req, res, next) => {
     }
   });
 });
+
+
+// Update in controllers/autopoolController.js - addUserToAutopool method
+exports.addUserToAutopool = async (userId) => {
+  try {
+    // Check if user exists
+    const user = await User.findOne({ userId });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    // Check if user is already in autopool
+    const existingPosition = await AutoPool.findOne({ userId });
+    if (existingPosition) {
+      return {
+        status: 'skipped',
+        reason: 'User already exists in autopool',
+        position: existingPosition.position
+      };
+    }
+    
+    // Get total members to determine new position
+    const totalMembers = await AutoPool.countDocuments();
+    const newPosition = totalMembers + 1;
+    
+    // Calculate level based on position
+    const level = AutoPool.findLevel(newPosition);
+    
+    // Find parent position
+    const parentPosition = AutoPool.findParentPosition(newPosition);
+    
+    // Create new autopool entry
+    const newAutopool = await AutoPool.create({
+      userId,
+      user: user._id,
+      position: newPosition,
+      parentPosition,
+      level,
+      children: [],
+      isEligible: true,
+      joinedAt: Date.now()
+    });
+    
+    // Update parent's children array
+    if (parentPosition > 0) {
+      const parent = await AutoPool.findOne({ position: parentPosition });
+      if (parent) {
+        parent.children.push(newPosition);
+        await parent.save();
+      }
+    }
+    
+    // Process autopool income
+    const autopoolFees = await Settings.getValue('autopool_fees', config.xeenux.autopoolFees);
+    const incomeRecipients = [];
+    
+    // Calculate autopool income recipients
+    let currentPosition = newPosition;
+    for (let i = 0; i < autopoolFees.length; i++) {
+      // Find the parent's position
+      const parentPosition = AutoPool.findParentPosition(currentPosition);
+      
+      // If we reached the root or beyond, stop
+      if (parentPosition <= 0) break;
+      
+      // Add to recipients list
+      incomeRecipients.push({
+        position: parentPosition,
+        level: i
+      });
+      
+      // Move up to the parent for next iteration
+      currentPosition = parentPosition;
+    }
+    
+    // Distribute income to recipients
+    const distributionResults = [];
+    
+    for (const recipient of incomeRecipients) {
+      const recipientPool = await AutoPool.findOne({ position: recipient.position });
+      if (recipientPool && recipientPool.isEligible) {
+        const recipientUser = await User.findOne({ userId: recipientPool.userId });
+        if (recipientUser) {
+          // Convert USD amount to XEE
+          const tokenService = require('../services/tokenService');
+          const incomeAmountUSD = autopoolFees[recipient.level];
+          const incomeAmount = await tokenService.usdToXeenux(incomeAmountUSD);
+          
+          // Create income record
+          await Income.create({
+            userId: recipientUser.userId,
+            user: recipientUser._id,
+            type: 'autopool',
+            amount: incomeAmount,
+            level: recipient.level + 1,
+            description: `Autopool level ${recipient.level + 1} income`,
+            isDistributed: true
+          });
+          
+          // Create activity record
+          await Activity.create({
+            userId: recipientUser.userId,
+            user: recipientUser._id,
+            amount: incomeAmount,
+            type: 3, // Autopool
+            level: recipient.level + 1,
+            description: `Autopool level ${recipient.level + 1} income from user #${userId}`,
+            meta: {
+              sourceUserId: userId,
+              level: recipient.level + 1,
+              amountUSD: incomeAmountUSD
+            }
+          });
+          
+          // Update user autopool income
+          recipientUser.autopoolIncome += incomeAmount;
+          await recipientUser.save();
+          
+          // Update recipientPool total earned
+          recipientPool.totalEarned += incomeAmount;
+          await recipientPool.save();
+          
+          distributionResults.push({
+            recipientId: recipientUser.userId,
+            level: recipient.level + 1,
+            amount: incomeAmount,
+            amountUSD: incomeAmountUSD
+          });
+        }
+      }
+    }
+    
+    return {
+      status: 'success',
+      autopool: newAutopool,
+      position: newPosition,
+      level,
+      parentPosition,
+      incomesDistributed: distributionResults
+    };
+  } catch (error) {
+    console.error(`Error in addUserToAutopool: ${error.message}`);
+    throw error;
+  }
+};

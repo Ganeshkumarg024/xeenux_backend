@@ -1,0 +1,180 @@
+{
+    "status": "success",
+    "data": {
+        "user": {
+            "_id": "67f3afe14ce018eb2015c457",
+            "name": "gk Name",
+            "email": "hokageganesh@gmail.com",
+            "phone": "9876543210",
+            "walletAddress": "0xabcdef1234567890abcdef1234567890abcdef12",
+            "role": "user",
+            "isActive": true,
+            "userId": 850837,
+            "referrerId": 103115,
+            "position": 0,
+            "registeredAt": "2025-04-07T10:58:41.260Z",
+            "refCount": 0,
+            "rank": 0,
+            "lastRankSaved": 0,
+            "roiIncome": 0,
+            "levelIncome": 0,
+            "autopoolIncome": 0,
+            "rewardIncome": 0,
+            "binaryIncome": 0,
+            "lastROIDistributed": "2025-04-07T10:58:41.260Z",
+            "lastBinaryDistributed": "2025-04-07T10:58:41.260Z",
+            "lastRewardDistributed": "2025-04-07T10:58:41.260Z",
+            "totalWithdraw": 0,
+            "purchaseWallet": 0,
+            "createdAt": "2025-04-07T10:58:41.271Z",
+            "updatedAt": "2025-04-07T12:20:18.056Z",
+            "__v": 0,
+            "passwordChangedAt": "2025-04-07T11:45:05.123Z",
+            "totalIncome": 0,
+            "id": "67f3afe14ce018eb2015c457"
+        },
+        "volume": {
+            "_id": "67f3afe14ce018eb2015c45b",
+            "userId": 850837,
+            "user": "67f3afe14ce018eb2015c457",
+            "selfVolume": 22727.272727272728,
+            "directVolume": 0,
+            "leftVolume": 0,
+            "rightVolume": 0,
+            "totalVolume": 22727.272727272728,
+            "lastUpdated": "2025-04-07T14:09:05.884Z",
+            "createdAt": "2025-04-07T10:58:41.493Z",
+            "updatedAt": "2025-04-07T14:09:05.884Z",
+            "__v": 0
+        },
+        "binaryNetwork": {
+            "_id": "67f3afe14ce018eb2015c459",
+            "userId": 850837,
+            "user": "67f3afe14ce018eb2015c457",
+            "position": 0,
+            "parentId": 103115,
+            "leftChildId": 0,
+            "rightChildId": 0,
+            "leftVolume": 0,
+            "rightVolume": 0,
+            "leftCarryForward": 0,
+            "rightCarryForward": 0,
+            "totalLeftVolume": 0,
+            "totalRightVolume": 0,
+            "leftCount": 0,
+            "rightCount": 0,
+            "lastBinaryProcess": "2025-04-07T10:58:41.386Z",
+            "createdAt": "2025-04-07T10:58:41.388Z",
+            "updatedAt": "2025-04-07T10:58:41.388Z",
+            "__v": 0
+        },
+        "teamStructure": {
+            "_id": "67f3afe14ce018eb2015c45d",
+            "userId": 850837,
+            "user": "67f3afe14ce018eb2015c457",
+            "directTeam": 0,
+            "totalTeam": 0,
+            "directBusiness": 0,
+            "totalBusiness": 0,
+            "team": {
+                "level1": [],
+                "level2": [],
+                "level3": [],
+                "level4": [],
+                "level5": [],
+                "level6": [],
+                "level7": []
+            },
+            "volume": {
+                "level1": 0,
+                "level2": 0,
+                "level3": 0,
+                "level4": 0,
+                "level5": 0,
+                "level6": 0,
+                "level7": 0
+            },
+            "teamRanks": {
+                "rank0": 0,
+                "rank1": 0,
+                "rank2": 0,
+                "rank3": 0,
+                "rank4": 0
+            },
+            "lastUpdated": "2025-04-07T10:58:41.604Z",
+            "createdAt": "2025-04-07T10:58:41.606Z",
+            "updatedAt": "2025-04-07T10:58:41.606Z",
+            "__v": 0
+        },
+        "activePackages": [
+            {
+                "_id": "67f3dc8147887bbc6f518242",
+                "user": "67f3afe14ce018eb2015c457",
+                "userId": 850837,
+                "package": "67f3773528beb36eaeeac5dc",
+                "packageIndex": 0,
+                "purchaseDate": "2025-04-07T14:09:05.707Z",
+                "amountPaid": 2.5,
+                "xeenuxAmount": 22727.272727272728,
+                "ceilingLimit": 90909.09090909091,
+                "earned": 0,
+                "isActive": true,
+                "createdAt": "2025-04-07T14:09:05.714Z",
+                "updatedAt": "2025-04-07T14:09:05.714Z",
+                "__v": 0
+            }
+        ],
+        "incomes": {
+            "roi": 0,
+            "level": 0,
+            "binary": 0,
+            "autopool": 0,
+            "reward": 0,
+            "total": 0
+        },
+        "recentActivities": [
+            {
+                "_id": "67f3dc8247887bbc6f518248",
+                "userId": 850837,
+                "user": "67f3afe14ce018eb2015c457",
+                "amount": 22727.272727272728,
+                "type": 0,
+                "level": 0,
+                "description": "Purchased Starter package",
+                "referenceId": "67f3dc8147887bbc6f518242",
+                "meta": {
+                    "packageIndex": 0,
+                    "packageName": "Starter",
+                    "priceUSD": 2.5
+                },
+                "createdAt": "2025-04-07T14:09:06.034Z",
+                "updatedAt": "2025-04-07T14:09:06.034Z",
+                "__v": 0
+            }
+        ],
+        "referralLinks": {
+            "left": "https://xeenux.io/register/?ref=850837&pos=0",
+            "right": "https://xeenux.io/register/?ref=850837&pos=1"
+        },
+        "binaryTree": {
+            "userId": 850837,
+            "name": "gk Name",
+            "position": 0,
+            "leftVolume": 0,
+            "rightVolume": 0,
+            "totalLeftVolume": 0,
+            "totalRightVolume": 0,
+            "isEmpty": false,
+            "left": {
+                "userId": 0,
+                "name": "Empty",
+                "isEmpty": true
+            },
+            "right": {
+                "userId": 0,
+                "name": "Empty",
+                "isEmpty": true
+            }
+        }
+    }
+}

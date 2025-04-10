@@ -46,7 +46,7 @@ exports.getAllPackages = catchAsync(async (req, res, next) => {
 exports.purchasePackage = catchAsync(async (req, res, next) => {
   const { packageIndex, position } = req.body;
   const userId = req.user.userId;
-  
+   console.log("Purchase")
   // Validate package index
   const packageData = await Package.findOne({ packageIndex });
   if (!packageData) {
@@ -312,35 +312,31 @@ exports.updatePackage = catchAsync(async (req, res, next) => {
  * Delete a package (admin only)
  */
 exports.deletePackage = catchAsync(async (req, res, next) => {
-    const packageIndex = parseInt(req.params.packageIndex);
-    
-    // Find package
-    const packageData = await Package.findOne({ packageIndex });
-    
-    if (!packageData) {
-      return next(new AppError('Package not found', 404));
-    }
-    
-    // Check if there are active users with this package
-    const activePackageUsers = await UserPackage.countDocuments({
-      packageIndex,
-      isActive: true
-    });
-    
-    if (activePackageUsers > 0) {
-      return next(new AppError('Cannot delete package with active users', 400));
-    }
-    
-    // Deactivate package instead of deleting
-    packageData.isActive = false;
-    await packageData.save();
-    
-    res.status(204).json({
-      status: 'success',
-      data: null
-    });
+  const packageIndex = parseInt(req.params.packageIndex);
+  
+  // Find package
+  const packageData = await Package.findOne({ packageIndex });
+  
+  if (!packageData) {
+    return next(new AppError('Package not found', 404));
+  }
+  
+  // Check if there are active users with this package
+  const activePackageUsers = await UserPackage.countDocuments({
+    packageIndex,
+    isActive: true
   });
   
+  if (activePackageUsers > 0) {
+    return next(new AppError('Cannot delete package with active users', 400));
+  }
   
+  // Deactivate package instead of deleting
+  packageData.isActive = false;
+  await packageData.save();
   
-  
+  res.status(204).json({
+    status: 'success',
+    data: null
+  });
+});

@@ -59,10 +59,73 @@ const createDefaultPackages = async () => {
       priceUSD: 2.5,
       description: 'Entry level package',
       packageIndex: 0,
-      maxROIMultiplier: 4,
-      features: ['0.5% Daily ROI', 'Binary Income', 'Level Income']
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income']
     },
-    // ... (rest of the packages remain the same)
+    {
+      name: 'Basic',
+      priceUSD: 5,
+      description: 'Basic level package',
+      packageIndex: 1,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income']
+    },
+    {
+      name: 'Standard',
+      priceUSD: 10,
+      description: 'Standard package',
+      packageIndex: 2,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income']
+    },
+    {
+      name: 'Silver',
+      priceUSD: 25, 
+      description: 'Silver package',
+      packageIndex: 3,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income', 'Weekly Reward Eligible']
+    },
+    {
+      name: 'Gold',
+      priceUSD: 50,
+      description: 'Gold package',
+      packageIndex: 4,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income', 'Weekly Reward Eligible']
+    },
+    {
+      name: 'Premium',
+      priceUSD: 100,
+      description: 'Premium package - Silver rank eligible',
+      packageIndex: 5,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income', 'Silver Rank Eligible']
+    },
+    {
+      name: 'Advanced',
+      priceUSD: 250,
+      description: 'Advanced package - Gold rank eligible',
+      packageIndex: 6,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income', 'Gold Rank Eligible']
+    },
+    {
+      name: 'Elite',
+      priceUSD: 500,
+      description: 'Elite package - Platinum rank eligible',
+      packageIndex: 7,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income', 'Platinum Rank Eligible']
+    },
+    {
+      name: 'Diamond',
+      priceUSD: 1000,
+      description: 'Diamond package - Diamond rank eligible',
+      packageIndex: 8,
+      maxROIMultiplier: 4, // 0.5% daily for 400 days = 2x investment
+      features: ['0.5% Daily ROI up to 400 days', 'Binary Income (10% pairmatch)', 'Level Income', 'Diamond Rank Eligible']
+    }
   ];
   
   for (const pkg of packages) {
